@@ -29,6 +29,7 @@
     "@types/react": "18.2.66",
     "@types/react-dom": "18.2.22",
     "prisma": "^5.10.0",
-    "@types/bcryptjs": "^2.4.6"
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsdom": "^21.1.7"
   }
 }
