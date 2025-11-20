@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverActions: true,
-  },
+  // Server Actions включены по умолчанию, здесь ничего лишнего
 };
 
 export default nextConfig;
