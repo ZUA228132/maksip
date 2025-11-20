@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Server Actions включены по умолчанию, здесь ничего лишнего
+  experimental: {
+    appDir: true
+  }
 };
 
 export default nextConfig;

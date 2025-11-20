@@ -1,13 +1,10 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { getCurrentAgent } from "@/lib/auth";
 
-export default function Home() {
-  const cookieStore = cookies();
-  const agentId = cookieStore.get("agentId")?.value;
-
-  if (!agentId) {
+export default async function IndexPage() {
+  const agent = await getCurrentAgent();
+  if (!agent) {
     redirect("/login");
-  } else {
-    redirect("/dashboard");
   }
+  redirect("/dashboard");
 }

@@ -1,17 +1,8 @@
-export function normalizePhone(input: string | null | undefined): string | null {
-  if (!input) return null;
-  const digits = input.replace(/[^\d]/g, "");
-  if (!digits) return null;
-
-  if (digits.startsWith("0") && digits.length === 10) {
-    return "+38" + digits;
-  }
-  if (digits.startsWith("380") && digits.length === 12) {
-    return "+" + digits;
-  }
-  if (digits.startsWith("8") && digits.length === 11) {
-    return "+7" + digits.slice(1);
-  }
-
-  return "+" + digits;
+export function normalizePhone(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  let s = raw.replace(/[^0-9+]/g, "");
+  if (s.startsWith("00")) s = "+" + s.slice(2);
+  if (s.startsWith("8") && s.length === 11) s = "+7" + s.slice(1);
+  if (!s.startsWith("+") && s.length === 10) s = "+38" + s;
+  return s;
 }

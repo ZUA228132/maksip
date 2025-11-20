@@ -1,65 +1,56 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const now = new Date();
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
 
     const calls = await prisma.call.findMany({
       where: {
         startedAt: {
-          gte: dayStart,
-          lte: now,
-        },
-      },
-      include: {
-        agent: true,
-      },
+          gte: start,
+          lte: end
+        }
+      }
     });
 
     const map = new Map<
       string,
-      {
-        id: string;
-        displayName: string;
-        totalCalls: number;
-        totalAnswered: number;
-        totalDuration: number;
-      }
+      { label: string; total: number; answered: number; missed: number }
     >();
 
     for (const c of calls) {
-      const agentId = c.agentId || "unknown";
-      const agentName = c.agent?.displayName || "Не назначено";
-      if (!map.has(agentId)) {
-        map.set(agentId, {
-          id: agentId,
-          displayName: agentName,
-          totalCalls: 0,
-          totalAnswered: 0,
-          totalDuration: 0,
+      const label = c.agentLabel || "Unknown";
+      if (!map.has(label)) {
+        map.set(label, {
+          label,
+          total: 0,
+          answered: 0,
+          missed: 0
         });
       }
-      const agg = map.get(agentId)!;
-      agg.totalCalls += 1;
-      if (c.status === "answered") {
-        agg.totalAnswered += 1;
-        agg.totalDuration += c.durationSec || 0;
+      const s = map.get(label)!;
+      s.total += 1;
+      if (["answered", "ok", "success"].includes(c.status.toLowerCase())) {
+        s.answered += 1;
+      } else if (
+        ["missed", "noanswer", "busy"].includes(c.status.toLowerCase())
+      ) {
+        s.missed += 1;
       }
     }
 
-    const list = Array.from(map.values()).map((a) => ({
-      ...a,
-      avgDurationSec: a.totalAnswered ? Math.round(a.totalDuration / a.totalAnswered) : 0,
-    }));
-
-    return NextResponse.json(list);
-  } catch (e) {
-    console.error("stats/agents DB error", e);
-    // Возвращаем пустой список, но без падения
-    return NextResponse.json([]);
+    return NextResponse.json(Array.from(map.values()));
+  } catch (e: any) {
+    console.error("GET /api/stats/agents error", e);
+    return NextResponse.json(
+      { error: "Ошибка статистики" },
+      { status: 500 }
+    );
   }
 }

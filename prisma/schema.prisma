@@ -7,65 +7,65 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Agent {
-  id           String    @id @default(cuid())
-  username     String    @unique
-  passwordHash String
-  displayName  String
-  sipId        String?
-  createdAt    DateTime  @default(now())
-  uploads      Upload[]
-  calls        Call[]    @relation("AgentCalls")
-  leadStats    LeadStats[] @relation("AgentLeadStats")
-}
-
 model Upload {
-  id         String   @id @default(cuid())
-  filename   String
-  rowsCount  Int
-  createdBy  Agent    @relation(fields: [createdById], references: [id])
-  createdById String
-  createdAt  DateTime @default(now())
-  leads      Lead[]
+  id           String   @id @default(uuid()) @db.Uuid
+  filename     String
+  originalName String?
+  rowsCount    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@map("Upload")
 }
 
 model Lead {
-  id              String     @id @default(cuid())
-  upload          Upload     @relation(fields: [uploadId], references: [id])
-  uploadId        String
-  phoneNormalized String
+  id              String   @id @default(uuid()) @db.Uuid
+  phoneRaw        String?
+  phoneNormalized String   @unique
   fullName        String?
   position        String?
   rank            String?
-  extra           Json?
-  calls           Call[]
-  stats           LeadStats?
+  unit            String?
+  notes           String?
+  uploadId        String?  @db.Uuid
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now())
+
+  @@map("Lead")
 }
 
 model Call {
-  id          String    @id @default(cuid())
-  externalId  String?
-  fromNumber  String
-  toNumber    String
-  direction   String
-  status      String
-  startedAt   DateTime?
-  finishedAt  DateTime?
-  durationSec Int?
-  agent       Agent?    @relation("AgentCalls", fields: [agentId], references: [id])
-  agentId     String?
-  lead        Lead?     @relation(fields: [leadId], references: [id])
-  leadId      String?
-  raw         Json?
+  id           String   @id @default(uuid()) @db.Uuid
+  leadId       String?  @db.Uuid
+  agentLabel   String?
+  direction    String
+  status       String
+  durationSec  Int?
+  startedAt    DateTime
+  endedAt      DateTime?
+  recordingUrl String?
+  sipId        String?
+  createdAt    DateTime @default(now())
+
+  @@map("Call")
 }
 
 model LeadStats {
-  leadId         String  @id
-  lead           Lead    @relation(fields: [leadId], references: [id])
-  totalCalls     Int     @default(0)
-  totalAnswered  Int     @default(0)
+  id             String   @id @default(uuid()) @db.Uuid
+  leadId         String   @unique @db.Uuid
+  totalCalls     Int      @default(0)
+  totalAnswered  Int      @default(0)
   lastCallAt     DateTime?
-  lastStatus     String?
-  lastAgent      Agent?  @relation("AgentLeadStats", fields: [lastAgentId], references: [id])
-  lastAgentId    String?
+  lastAgentLabel String?
+
+  @@map("LeadStats")
+}
+
+model SupportTicket {
+  id        String   @id @default(uuid()) @db.Uuid
+  subject   String
+  body      String
+  status    String   @default("open")
+  createdAt DateTime @default(now())
+
+  @@map("SupportTicket")
 }

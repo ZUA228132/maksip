@@ -1,34 +1,33 @@
-# SIP Callcenter Dashboard
+# SIP Callcenter Dashboard (maksip_new)
 
-Next.js 14 + Prisma + Tailwind панель управления колл-центром для работы с SIP trunk `sip.xho.biz`.
+Минималистичная панель управления колл-центром для SIP-телефонии.
 
-## Быстрый старт (локально)
+## Быстрый старт
 
-```bash
-npm install
-npx prisma generate
-npx prisma migrate dev --name init
-cp .env.example .env
-# отредактируй DATABASE_URL и SIP_* переменные
-npm run dev
-```
+1. Установить зависимости:
 
-По умолчанию логин/пароль: `admin` / `admin123` (создаётся автоматически при первом запросе к /api/auth/login).
+   ```bash
+   npm install
+   ```
 
-## Деплой на Vercel
+2. Настроить переменные окружения в `.env.local`:
 
-1. Зальи проект в GitHub.
-2. Подключи репозиторий в Vercel.
-3. В настройках проекта на Vercel задай переменные окружения:
-   - `DATABASE_URL` (Supabase / Railway / другой Postgres)
-   - `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `ADMIN_DISPLAY_NAME`
-   - `SIP_DOMAIN`, `SIP_USERNAME`, `SIP_PASSWORD`
-   - `NEXT_PUBLIC_BASE_URL` — прод-URL проекта (например, `https://yourproject.vercel.app`)
+   ```bash
+   DATABASE_URL=postgresql://postgres:password@host:5432/postgres
+   ADMIN_LOGIN=admin
+   ADMIN_PASSWORD=admin123
+   ADMIN_DISPLAY_NAME=Admin
+   SIP_BASE_URL=https://sip.xho.biz
+   SIP_LOGIN=9571421515
+   SIP_PASSWORD=0038804455
+   ```
 
-4. Запусти деплой.
+3. Создать таблицы в БД (Supabase / Postgres) через Prisma или SQL (под тебя можно будет донастроить).
 
-## SIP интеграция
+4. Запустить dev:
 
-- В `lib/sipClient.ts` лежит пример HTTP-клиента к `sip.xho.biz` (подставь реальные пути API).
-- В `app/api/sip/webhook/route.ts` — endpoint для приёма CDR / событий о звонках.
-  Укажи его в панели `sip.xho.biz` как webhook, чтобы все звонки прилетали в твою БД.
+   ```bash
+   npm run dev
+   ```
+
+5. Задеплоить на Vercel, прописав те же ENV.

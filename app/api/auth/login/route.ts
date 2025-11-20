@@ -1,62 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
+import { ensureAdminSeed } from "@/lib/auth";
+
+const ADMIN_LOGIN = process.env.ADMIN_LOGIN ?? "admin";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "admin123";
 
 export const runtime = "nodejs";
 
-async function ensureAdmin() {
-  const username = process.env.ADMIN_LOGIN ?? "admin";
-  const password = process.env.ADMIN_PASSWORD ?? "admin123";
-  const displayName = process.env.ADMIN_DISPLAY_NAME ?? "Администратор";
-
-  // пробуем найти админа
-  try {
-    const existing = await prisma.agent.findUnique({
-      where: { username },
-    });
-
-    if (existing) return existing;
-  } catch (e) {
-    console.error("ensureAdmin: prisma.agent.findUnique error", e);
-    throw e;
-  }
-
-  const passwordHash = await bcrypt.hash(password, 10);
-
-  try {
-    const admin = await prisma.agent.create({
-      data: {
-        username,
-        passwordHash,
-        displayName,
-        // БЕЗ role: "admin"
-      },
-    });
-
-    console.log("Admin created:", admin.username);
-    return admin;
-  } catch (e) {
-    console.error("ensureAdmin: prisma.agent.create error", e);
-    throw e;
-  }
-}
-
 export async function POST(req: NextRequest) {
   try {
-    await ensureAdmin();
+    await ensureAdminSeed();
 
-    const body = await req.json().catch(() => null);
-    if (!body || typeof body !== "object") {
-      return NextResponse.json(
-        { error: "Некорректный формат запроса" },
-        { status: 400 }
-      );
-    }
-
-    const { username, password } = body as {
-      username?: string;
-      password?: string;
-    };
+    const body = await req.json().catch(() => ({} as any));
+    const username = (body.username ?? body.login ?? "").toString();
+    const password = (body.password ?? "").toString();
 
     if (!username || !password) {
       return NextResponse.json(
@@ -65,43 +21,33 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const agent = await prisma.agent.findUnique({
-      where: { username },
-    });
-
-    if (!agent) {
+    if (username !== ADMIN_LOGIN || password !== ADMIN_PASSWORD) {
       return NextResponse.json(
         { error: "Неверный логин или пароль" },
         { status: 401 }
       );
     }
 
-    const ok = await bcrypt.compare(password, agent.passwordHash);
-    if (!ok) {
-      return NextResponse.json(
-        { error: "Неверный логин или пароль" },
-        { status: 401 }
-      );
-    }
+    const token = "maksip-" + Math.random().toString(36).slice(2);
 
-    const res = NextResponse.json({ ok: true });
+    const res = NextResponse.json({ ok: true }, { status: 200 });
 
-    res.cookies.set("agentId", agent.id, {
+    res.cookies.set("maksip_token", token, {
       httpOnly: true,
       secure: true,
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24 * 7,
+      maxAge: 60 * 60 * 24 * 7
     });
 
     return res;
   } catch (e: any) {
-    console.error("auth/login error", e);
+    console.error("Login error:", e);
     return NextResponse.json(
       {
         error:
           "Внутренняя ошибка авторизации: " +
-          (e?.message ?? "unknown"),
+          (e?.message ?? "unknown")
       },
       { status: 500 }
     );

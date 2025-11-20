@@ -1,72 +1,38 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
-export async function GET(req: NextRequest) {
+export async function GET() {
   try {
-    const now = new Date();
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date();
+    end.setHours(23, 59, 59, 999);
 
     const calls = await prisma.call.findMany({
       where: {
         startedAt: {
-          gte: dayStart,
-          lte: now,
-        },
-      },
+          gte: start,
+          lte: end
+        }
+      }
     });
 
     const total = calls.length;
-    const answeredCalls = calls.filter((c) => c.status === "answered");
-    const missedCalls = calls.filter((c) => c.status !== "answered");
+    const answered = calls.filter((c) =>
+      ["answered", "ok", "success"].includes(c.status.toLowerCase())
+    ).length;
+    const missed = calls.filter((c) =>
+      ["missed", "noanswer", "busy"].includes(c.status.toLowerCase())
+    ).length;
 
-    const answered = answeredCalls.length;
-    const missed = missedCalls.length;
-
-    const avgDurationSec = answered
-      ? Math.round(
-          answeredCalls.reduce((sum, c) => sum + (c.durationSec || 0), 0) / answered
-        )
-      : 0;
-
-    const answeredRate = total ? Math.round((answered / total) * 100) : 0;
-    const missedRate = total ? Math.round((missed / total) * 100) : 0;
-
-    const dateHuman = dayStart.toLocaleDateString("ru-RU", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-
-    return NextResponse.json({
-      total,
-      answered,
-      missed,
-      avgDurationSec,
-      answeredRate,
-      missedRate,
-      dateHuman,
-    });
-  } catch (e) {
-    console.error("stats/today DB error", e);
-    const now = new Date();
-    const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const dateHuman = dayStart.toLocaleDateString("ru-RU", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-    // Возвращаем нули, чтобы билд/рендер не падал
-    return NextResponse.json({
-      total: 0,
-      answered: 0,
-      missed: 0,
-      avgDurationSec: 0,
-      answeredRate: 0,
-      missedRate: 0,
-      dateHuman,
-      error: "db_unreachable",
-    });
+    return NextResponse.json({ total, answered, missed });
+  } catch (e: any) {
+    console.error("GET /api/stats/today error", e);
+    return NextResponse.json(
+      { error: "Ошибка статистики" },
+      { status: 500 }
+    );
   }
 }

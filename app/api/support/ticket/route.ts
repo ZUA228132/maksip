@@ -1,16 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// Простой in-memory stub. На проде лучше писать в БД (таблица tickets).
-const tickets: { id: string; text: string; createdAt: string }[] = [];
+import { prisma } from "@/lib/prisma";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => null);
-  if (!body || typeof body.text !== "string" || !body.text.trim()) {
-    return NextResponse.json({ error: "Нет текста запроса" }, { status: 400 });
+  try {
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json(
+        { error: "Некорректный JSON" },
+        { status: 400 }
+      );
+    }
+
+    const { subject, body: text } = body as any;
+    if (!subject || !text) {
+      return NextResponse.json(
+        { error: "Нужны subject и body" },
+        { status: 400 }
+      );
+    }
+
+    const ticket = await prisma.supportTicket.create({
+      data: {
+        subject,
+        body: text
+      }
+    });
+
+    return NextResponse.json(ticket);
+  } catch (e: any) {
+    console.error("POST /api/support/ticket error", e);
+    return NextResponse.json(
+      { error: "Ошибка записи тикета" },
+      { status: 500 }
+    );
   }
-  const id = `T${Date.now()}`;
-  tickets.push({ id, text: body.text.trim(), createdAt: new Date().toISOString() });
-  return NextResponse.json({ ok: true, id });
 }
