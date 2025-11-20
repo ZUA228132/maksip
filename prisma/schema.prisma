@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Agent {
+  id           String    @id @default(cuid())
+  username     String    @unique
+  passwordHash String
+  displayName  String
+  sipId        String?
+  createdAt    DateTime  @default(now())
+  uploads      Upload[]
+  calls        Call[]    @relation("AgentCalls")
+  leadStats    LeadStats[] @relation("AgentLeadStats")
+}
+
+model Upload {
+  id         String   @id @default(cuid())
+  filename   String
+  rowsCount  Int
+  createdBy  Agent    @relation(fields: [createdById], references: [id])
+  createdById String
+  createdAt  DateTime @default(now())
+  leads      Lead[]
+}
+
+model Lead {
+  id              String     @id @default(cuid())
+  upload          Upload     @relation(fields: [uploadId], references: [id])
+  uploadId        String
+  phoneNormalized String
+  fullName        String?
+  position        String?
+  rank            String?
+  extra           Json?
+  calls           Call[]
+  stats           LeadStats?
+}
+
+model Call {
+  id          String    @id @default(cuid())
+  externalId  String?
+  fromNumber  String
+  toNumber    String
+  direction   String
+  status      String
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  durationSec Int?
+  agent       Agent?    @relation("AgentCalls", fields: [agentId], references: [id])
+  agentId     String?
+  lead        Lead?     @relation(fields: [leadId], references: [id])
+  leadId      String?
+  raw         Json?
+}
+
+model LeadStats {
+  leadId         String  @id
+  lead           Lead    @relation(fields: [leadId], references: [id])
+  totalCalls     Int     @default(0)
+  totalAnswered  Int     @default(0)
+  lastCallAt     DateTime?
+  lastStatus     String?
+  lastAgent      Agent?  @relation("AgentLeadStats", fields: [lastAgentId], references: [id])
+  lastAgentId    String?
+}
