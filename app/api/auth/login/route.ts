@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
+    // просто вызываем заглушку — внутри ничего не делается
     await ensureAdminSeed();
 
     const body = await req.json().catch(() => ({} as any));
@@ -32,6 +33,7 @@ export async function POST(req: NextRequest) {
 
     const res = NextResponse.json({ ok: true }, { status: 200 });
 
+    // Эту куку проверяет getCurrentAgent
     res.cookies.set("maksip_token", token, {
       httpOnly: true,
       secure: true,
