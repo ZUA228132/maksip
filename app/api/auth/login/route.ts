@@ -1,64 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
-import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
-import { ensureAdminSeed } from "@/lib/auth";
 
-export const runtime = "nodejs";
+const ADMIN_LOGIN = process.env.ADMIN_LOGIN ?? "admin";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "admin123";
 
 export async function POST(req: NextRequest) {
   try {
-    await ensureAdminSeed();
-
-    const body = await req.json().catch(() => null);
-    if (!body || typeof body !== "object") {
-      return NextResponse.json(
-        { error: "Некорректный формат запроса" },
-        { status: 400 },
-      );
-    }
-
-    const { username, password } = body as { username?: string; password?: string };
+    const body = await req.json().catch(() => ({} as any));
+    const username = (body.username ?? body.login ?? "").toString();
+    const password = (body.password ?? "").toString();
 
     if (!username || !password) {
       return NextResponse.json(
-        { error: "Введите логин и пароль" },
-        { status: 400 },
+        { error: "Укажи логин и пароль" },
+        { status: 400 }
       );
     }
 
-    const agent = await prisma.agent.findUnique({
-      where: { username },
-    });
-
-    if (!agent) {
+    if (username !== ADMIN_LOGIN || password !== ADMIN_PASSWORD) {
       return NextResponse.json(
         { error: "Неверный логин или пароль" },
-        { status: 401 },
+        { status: 401 }
       );
     }
 
-    const ok = await bcrypt.compare(password, agent.passwordHash);
-    if (!ok) {
-      return NextResponse.json(
-        { error: "Неверный логин или пароль" },
-        { status: 401 },
-      );
-    }
+    // простой токен с кукой
+    const token = "maksip-admin-" + Math.random().toString(36).slice(2);
 
-    const res = NextResponse.json({ ok: true });
-    res.cookies.set("agentId", agent.id, {
+    const res = NextResponse.json(
+      { ok: true, token },
+      { status: 200 }
+    );
+
+    res.cookies.set("maksip_token", token, {
       httpOnly: true,
-      sameSite: "lax",
       secure: true,
+      sameSite: "lax",
       path: "/",
+      maxAge: 60 * 60 * 24 * 7, // 7 дней
     });
+
     return res;
-  } catch (e) {
-    console.error("auth/login error", e);
-    // Всегда возвращаем JSON, чтобы фронт нормально распарсил
+  } catch (err: any) {
+    console.error("Login error:", err);
     return NextResponse.json(
-      { error: "Ошибка подключения к базе или внутренний сбой сервера" },
-      { status: 500 },
+      {
+        error:
+          "Внутренняя ошибка авторизации: " +
+          (err?.message ?? "unknown"),
+      },
+      { status: 500 }
     );
   }
 }
