@@ -5,12 +5,11 @@ import { prisma } from "@/lib/prisma";
 export const runtime = "nodejs";
 
 async function ensureAdmin() {
-  // берём данные админа из env, с дефолтами
   const username = process.env.ADMIN_LOGIN ?? "admin";
   const password = process.env.ADMIN_PASSWORD ?? "admin123";
   const displayName = process.env.ADMIN_DISPLAY_NAME ?? "Администратор";
 
-  // если таблицы нет или другая ошибка схемы — сразу пробрасываем, чтобы увидеть в логах
+  // пробуем найти админа
   try {
     const existing = await prisma.agent.findUnique({
       where: { username },
@@ -30,7 +29,7 @@ async function ensureAdmin() {
         username,
         passwordHash,
         displayName,
-        role: "admin",
+        // БЕЗ role: "admin"
       },
     });
 
@@ -44,7 +43,6 @@ async function ensureAdmin() {
 
 export async function POST(req: NextRequest) {
   try {
-    // гарантированно создаём админа, если его нет
     await ensureAdmin();
 
     const body = await req.json().catch(() => null);
@@ -88,7 +86,6 @@ export async function POST(req: NextRequest) {
 
     const res = NextResponse.json({ ok: true });
 
-    // ВАЖНО: именно эту куку ждёт защита /dashboard
     res.cookies.set("agentId", agent.id, {
       httpOnly: true,
       secure: true,
